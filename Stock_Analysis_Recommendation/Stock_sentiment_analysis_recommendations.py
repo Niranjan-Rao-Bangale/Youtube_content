@@ -6,7 +6,7 @@ import yfinance as yf
 from newsapi import NewsApiClient
 from yahooquery import search
 
-NEWS_API_KEY = "8a6af405b8694e10804e74ad3813bebf"
+NEWS_API_KEY = "XXXXXXXXXXX" # API key from https://newsapi.org
 
 
 def get_market_data(ticker: str, period="1mo", interval="1d"):
