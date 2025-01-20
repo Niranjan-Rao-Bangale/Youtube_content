@@ -1,3 +1,8 @@
+######################
+## This code is created for educational purpose only should not be used for investments
+######################
+
+
 from datetime import datetime, timedelta
 
 import gradio as gr
