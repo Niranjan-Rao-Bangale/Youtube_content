@@ -132,7 +132,7 @@ Configure application settings, including theme and LLM provider/API keys.
 * Click the "Get Answer" button to receive an AI-powered response.
 * Review the chat history displayed above the input.
 
-######Canvas:
+###### Canvas:
 
 * Navigate to "Canvas" from the sidebar.
 * Use the toolbar to select drawing tools: Free Draw, Eraser, Line, Rectangle, Circle, Transform/Pan.
