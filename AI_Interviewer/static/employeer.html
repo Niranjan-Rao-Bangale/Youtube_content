@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Interviewer - HR Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+      margin: 0;
+      padding: 30px;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      background: #fff;
+      max-width: 1000px;
+      width: 100%;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+    h1 {
+      text-align: center;
+      color: #d6336c;
+      font-size: 2.5em;
+      margin-bottom: 20px;
+    }
+    h2, h3 {
+      color: #333;
+    }
+    .form-section {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .form-group {
+      flex: 1;
+      min-width: 300px;
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .form-group h3 {
+      margin-top: 0;
+      color: #d6336c;
+    }
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    nav {
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    nav button {
+      margin: 5px;
+      padding: 10px 15px;
+      border-radius: 4px;
+      background-color: #ff6f61;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    nav button:hover {
+      background-color: #e65c50;
+    }
+    .tab {
+      display: none;
+      margin-bottom: 30px;
+    }
+    .tab.active {
+      display: block;
+    }
+    .feedback, .score-summary {
+      margin-top: 20px;
+      padding: 20px;
+      border: 1px solid #dee2e6;
+      background: #e9ecef;
+      border-radius: 8px;
+    }
+    .feedback h3, .score-summary h3 {
+      margin-top: 0;
+      color: #00796b;
+    }
+    #retrieve-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    #retrieve-section input {
+      padding: 10px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 16px;
+      width: 300px;
+      margin-bottom: 10px;
+    }
+    #retrieve-section button {
+      background-color: #00796b;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI Interviewer - HR Dashboard</h1>
+
+    <!-- Job Profile Setup Section -->
+    <section id="hr-form">
+      <h2>Job Profile Setup (HR/PM)</h2>
+      <div class="form-section">
+        <!-- Left: Upload Profile -->
+        <div class="form-group">
+          <h3>Upload Job Profile</h3>
+          <p>Select a .txt or .pdf file:</p>
+          <input type="file" name="profile_file" accept=".txt,.pdf" id="profile_file" />
+          <div id="file-name"></div>
+          <pre id="file-preview" style="display: none;"></pre>
+          <button onclick="submitProfileFile()">Submit File</button>
+        </div>
+        <!-- Right: Manual Entry -->
+        <div class="form-group">
+          <h3>Enter Details Manually</h3>
+          <form id="manual-profile-form">
+            <label>Job Title:</label>
+            <input type="text" name="title" required />
+            <label>Required Skills (comma separated):</label>
+            <input type="text" name="skills" required />
+            <label>Experience Required:</label>
+            <input type="text" name="experience" required />
+            <label>Preferred Question Types:</label>
+            <select name="question_types" multiple required>
+              <option value="mcq">MCQ</option>
+              <option value="coding">Coding</option>
+              <option value="behavioral">Behavioral</option>
+            </select>
+            <button type="submit">Submit Manual Profile</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav>
+      <button onclick="showTab('mcq-tab')">MCQ</button>
+      <button onclick="showTab('code-tab')">Coding</button>
+      <button onclick="showTab('voice-tab')">Voice</button>
+    </nav>
+
+    <!-- Retrieve Job Profile Section -->
+    <section id="retrieve-section">
+      <h2>Retrieve Job Profile</h2>
+      <input type="text" id="fetch-job-id" placeholder="Enter Job ID" />
+      <button onclick="fetchProfileFile()">Download Profile</button>
+    </section>
+
+    <!-- Tabs Content -->
+    <section id="mcq-tab" class="tab">
+      <h2>Multiple Choice Questions</h2>
+      <div id="mcq-container">Loading MCQs...</div>
+    </section>
+
+    <section id="code-tab" class="tab">
+      <h2>Coding Question</h2>
+      <div id="coding-question">Candidate, please solve the following problem:</div>
+      <textarea id="code-editor" rows="10" placeholder="Write your code here..."></textarea>
+      <button onclick="submitCode()">Submit Code</button>
+    </section>
+
+    <section id="voice-tab" class="tab">
+      <h2>Voice Interview</h2>
+      <div id="voice-response">Voice interview will be displayed here...</div>
+    </section>
+
+    <!-- Feedback and Final Report -->
+    <div class="feedback">
+      <h3>Live Feedback</h3>
+      <div id="feedback-box">Waiting for candidate response...</div>
+    </div>
+    <div class="score-summary">
+      <h3>Final Report</h3>
+      <div id="report-content">Interview in progress...</div>
+      <button onclick="downloadReport()">Download Report</button>
+    </div>
+  </div>
+
+  <script>
+    const backendBase = 'http://127.0.0.1:8000';
+
+    function showTab(id) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function submitProfileFile() {
+      const file = document.getElementById('profile_file').files[0];
+      if (!file) {
+        alert("Please select a file to upload.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append('mode', 'file');
+      formData.append('profile_file', file);
+      fetch(`${backendBase}/job_profile/submit/`, {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Profile submission response:", data);
+        if (data.job_id) {
+          alert('Job profile submitted! Job ID: ' + data.job_id);
+        } else {
+          alert('Job profile submission failed. Response: ' + JSON.stringify(data));
+        }
+      });
+    }
+
+    document.getElementById('manual-profile-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData();
+      const title = form.querySelector('[name="title"]').value;
+      const skills = form.querySelector('[name="skills"]').value;
+      const experience = form.querySelector('[name="experience"]').value;
+      const questionTypes = Array.from(form.querySelector('[name="question_types"]').selectedOptions).map(opt => opt.value);
+      formData.append('mode', 'manual');
+      formData.append('title', title);
+      formData.append('skills', JSON.stringify(skills.split(',')));
+      formData.append('experience', experience);
+      formData.append('question_types', JSON.stringify(questionTypes));
+      const res = await fetch(`${backendBase}/job_profile/submit/`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      console.log("Manual profile submission response:", data);
+      if (data.job_id) {
+        alert('Job profile submitted! Job ID: ' + data.job_id);
+      } else {
+        alert('Job profile submission failed. Response: ' + JSON.stringify(data));
+      }
+    });
+
+    function fetchProfileFile() {
+      const jobId = document.getElementById('fetch-job-id').value;
+      if (!jobId) {
+        alert('Please enter a Job ID.');
+        return;
+      }
+      window.open(`${backendBase}/job_profile/file/${jobId}`, '_blank');
+    }
+
+    function submitCode() {
+      const code = document.getElementById('code-editor').value;
+      fetch(`${backendBase}/evaluate_code/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('feedback-box').innerText = data.feedback;
+      });
+    }
+
+    function downloadReport() {
+      fetch(`${backendBase}/report/`)
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'interview_report.txt';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    }
+  </script>
+</body>
+</html>
