@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Interviewer - Candidate Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      margin: 0;
+      padding: 30px;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      font-size: 2.5em;
+      color: #ffffff;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+      margin-bottom: 20px;
+    }
+    .input-group {
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 15px;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .input-group input, .input-group select, .input-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    #interview-controls {
+      margin: 20px 0;
+    }
+    #interview-controls button {
+      background-color: #00695c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 15px 25px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    #interview-controls button:hover {
+      background-color: #004d40;
+    }
+    #avatar-container {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      overflow: hidden;
+      margin: 20px 0;
+      position: relative;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    #avatar-img, #avatar-video {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+    }
+    #avatar-video {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    audio {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .feedback-container {
+      background: rgba(255,255,255,0.9);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      max-width: 600px;
+      width: 100%;
+      margin-top: 30px;
+      color: #333;
+    }
+    .feedback-container h3 {
+      margin-top: 0;
+      color: #00796b;
+      border-bottom: 2px solid #b2dfdb;
+      padding-bottom: 8px;
+    }
+    #coding-section {
+      display: none;
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 30px;
+      max-width: 600px;
+      width: 100%;
+    }
+    textarea { height: 200px; resize: vertical; }
+  </style>
+</head>
+<body>
+  <h1>Welcome to the Candidate Portal</h1>
+
+  <div class="input-group">
+    <label for="job-id">Job ID:</label>
+    <input id="job-id" type="text" placeholder="Enter Job ID">
+  </div>
+  <div class="input-group">
+    <label for="candidate-name">Candidate Name:</label>
+    <input id="candidate-name" type="text" placeholder="Enter Your Name">
+  </div>
+
+  <div id="interview-controls">
+    <button onclick="startIntro()">Start Interview</button>
+    <button onclick="endInterview()">End Interview</button>
+  </div>
+
+  <div id="avatar-container">
+    <img id="avatar-img" src="avatar_neutral.png" alt="Avatar">
+    <video id="avatar-video" loop muted>
+      <source src="avatar_talking.mp4" type="video/mp4">
+      Your browser does not support video.
+    </video>
+  </div>
+
+  <audio id="aiAudio" controls style="display: none;"></audio>
+
+  <div class="feedback-container">
+    <h3>Interview Feedback</h3>
+    <div id="ai-feedback">Waiting for response...</div>
+  </div>
+
+  <!-- Coding Interview Section -->
+  <div id="coding-section">
+    <h3>Coding Interview</h3>
+    <div class="input-group">
+      <label for="language-select">Select Programming Language:</label>
+      <select id="language-select">
+        <option value="python">Python</option>
+        <option value="java">Java</option>
+      </select>
+    </div>
+    <div class="input-group">
+      <label for="code-editor">Your Code:</label>
+      <textarea id="code-editor" placeholder="Write your code here..."></textarea>
+    </div>
+    <button onclick="submitCandidateCode()">Submit Code</button>
+    <button onclick="startClarificationRecording()">Record Clarification</button>
+  </div>
+
+  <script>
+    const backend = 'http://127.0.0.1:8000';
+    let recognition;
+    let finalTranscript = "";
+    let silenceTimeout;
+    const aiAudio = document.getElementById('aiAudio');
+    const feedbackDiv = document.getElementById('ai-feedback');
+    const avatarVideo = document.getElementById("avatar-video");
+    const avatarImg = document.getElementById("avatar-img");
+
+    // Auto-recording with silence timeout for candidate responses
+    function startAutoRecording() {
+      finalTranscript = "";
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        console.log("Transcript:", finalTranscript + interimTranscript);
+        clearTimeout(silenceTimeout);
+        silenceTimeout = setTimeout(() => {
+          stopAutoRecording();
+        }, 3000);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        clearTimeout(silenceTimeout);
+      };
+
+      recognition.start();
+      feedbackDiv.innerText = "🎤 Listening...";
+    }
+
+    function stopAutoRecording() {
+      if (recognition) {
+        recognition.stop();
+      }
+      sendTranscribedText(finalTranscript);
+    }
+
+    // Animate avatar: show talking video when talking, neutral image when not
+    function animateAvatar(talking) {
+      if (talking) {
+        avatarImg.style.display = "none";
+        avatarVideo.style.display = "block";
+        avatarVideo.currentTime = 0;
+        avatarVideo.play();
+      } else {
+        avatarVideo.pause();
+        avatarVideo.currentTime = 0;
+        avatarVideo.style.display = "none";
+        avatarImg.style.display = "block";
+      }
+    }
+
+    // Start interview: fetch GPT intro, play audio, then auto-start recording
+    function startIntro() {
+      const jobId = document.getElementById("job-id").value.trim();
+      const name = document.getElementById("candidate-name").value.trim();
+      if (!jobId || !name) {
+        alert("Please enter Job ID and Candidate Name.");
+        return;
+      }
+      feedbackDiv.innerText = "Loading introduction...";
+      fetch(${backend}/interview/start?job_id=${jobId}&candidate_name=${encodeURIComponent(name)})
+        .then(res => res.json())
+        .then(data => {
+          feedbackDiv.innerText = data.text;
+          aiAudio.src = data.audio_url;
+          aiAudio.style.display = 'block';
+          animateAvatar(true);
+          aiAudio.play();
+          aiAudio.onended = () => {
+            animateAvatar(false);
+            startAutoRecording();
+          };
+        })
+        .catch(error => {
+          console.error("Error starting interview:", error);
+          feedbackDiv.innerText = "Failed to start interview. Please check the Job ID and try again.";
+        });
+    }
+
+    // End interview: stop any active recognition and audio, reset avatar and coding section
+    function endInterview() {
+      if (recognition) {
+        recognition.stop();
+        recognition = null;
+      }
+      clearTimeout(silenceTimeout);
+      aiAudio.pause();
+      aiAudio.currentTime = 0;
+      animateAvatar(false);
+      feedbackDiv.innerText = "Interview ended.";
+      document.getElementById("coding-section").style.display = "none";
+      document.getElementById("code-editor").value = "";
+    }
+
+    // Send candidate's transcribed text to backend for evaluation
+    async function sendTranscribedText(candidateText) {
+      const jobId = document.getElementById("job-id").value.trim();
+      const candidateName = document.getElementById("candidate-name").value.trim();
+      if (!jobId || !candidateName) {
+        alert("Job ID and Candidate Name are required.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append('candidate_text', candidateText);
+      formData.append('job_id', jobId);
+      formData.append('candidate_name', candidateName);
+      feedbackDiv.innerText = "⏳ Analyzing your response...";
+      animateAvatar(true);
+      try {
+        const res = await fetch(${backend}/interview/evaluate, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        feedbackDiv.innerText = "🗣️ You said: " + data.feedback + "\n\n🤖 GPT asked: " + data.next_question;
+        aiAudio.src = data.analyzing_audio;
+        aiAudio.style.display = "block";
+        aiAudio.play();
+        aiAudio.onended = () => {
+          aiAudio.src = data.question_audio;
+          aiAudio.play();
+          aiAudio.onended = () => {
+            animateAvatar(false);
+            if (data.coding) {
+              document.getElementById("coding-section").style.display = "block";
+            } else {
+              startAutoRecording();
+            }
+          };
+        };
+      } catch (error) {
+        console.error("Error evaluating response:", error);
+        feedbackDiv.innerText = "Failed to evaluate your response. Please try again.";
+      }
+    }
+
+    // Clarification recording during coding phase
+    function startClarificationRecording() {
+      finalTranscript = "";
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        console.log("Clarification transcript:", finalTranscript + interimTranscript);
+        clearTimeout(silenceTimeout);
+        silenceTimeout = setTimeout(() => {
+          stopClarificationRecording();
+        }, 3000);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        clearTimeout(silenceTimeout);
+      };
+
+      recognition.start();
+      feedbackDiv.innerText = "🎤 Recording your clarification...";
+    }
+
+    function stopClarificationRecording() {
+      if (recognition) {
+        recognition.stop();
+      }
+      sendTranscribedText(finalTranscript);
+    }
+
+    // Submit candidate code answer in coding phase
+    async function submitCandidateCode() {
+      const jobId = document.getElementById("job-id").value.trim();
+      const candidateName = document.getElementById("candidate-name").value.trim();
+      const language = document.getElementById("language-select").value;
+      const candidateCode = document.getElementById("code-editor").value;
+      if (!jobId || !candidateName || !candidateCode) {
+        alert("Please ensure Job ID, Candidate Name, and code are provided.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append('candidate_code', candidateCode);
+      formData.append('language', language);
+      formData.append('job_id', jobId);
+      formData.append('candidate_name', candidateName);
+      feedbackDiv.innerText = "⏳ Evaluating your code...";
+      try {
+        const res = await fetch(${backend}/interview/evaluate_code, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        feedbackDiv.innerText = "🤖 Code Evaluation:\n" + data.feedback;
+      } catch (error) {
+        console.error("Error evaluating code:", error);
+        feedbackDiv.innerText = "Failed to evaluate your code. Please try again.";
+      }
+    }
+  </script>
+</body>
+</html>
